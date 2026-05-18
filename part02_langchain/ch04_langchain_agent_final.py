@@ -78,6 +78,359 @@ llm = ChatOpenAI(
     temperature=0,
 )
 
+# =============================================
+
+# ─────────────────────────────────────────────────────────────
+# 2. Tool 함수 정의
+# ─────────────────────────────────────────────────────────────
+#
+# 이 예제에서는 CCTV 분석 Agent가 사용할 Tool 3개를 정의합니다.
+#
+# Tool 1:
+#   전체 위험도 요약
+#
+# Tool 2:
+#   특정 구역 객체 탐지 수 집계
+#
+# Tool 3:
+#   위험 프레임 목록 필터링
+#
+# 중요한 구분:
+#   results_json:
+#       risk_level, reason, action 등 분석 결과가 들어 있습니다.
+#
+#   frames_json:
+#       location, detections, bbox 등 원본 탐지 결과가 들어 있습니다.
+
+@tool
+
+def get_risk_summary(results_json: str) -> str:
+
+    """
+    CCTV 분석 결과 전체를 요약합니다.
+    위험/주의/정상 건수와 위험 프레임 ID 목록을 반환합니다.
+    운영자가 "전체 요약", "위험 몇 건" 등을 물을 때 사용하세요.
+
+    Args:
+        results_json: risk_level이 포함된 CCTV 분석 결과 JSON 문자열
+
+    Returns:
+        위험/주의/정상 건수와 위험 프레임 ID 목록을 담은 JSON 문자열
+    """
+
+    # JSON 문자열을 Python 리스트로 변환합니다.
+    data = json.loads(results_json)
+    # 위험도별 개수를 저장할 딕셔너리입니다.
+
+    counts = {
+        "위험": 0,
+        "주의": 0,
+        "정상": 0,
+    }
+
+    # 위험 등급 프레임 ID만 따로 저장합니다.
+    danger_ids = []
+    # 분석 결과를 하나씩 확인합니다.
+
+    for r in data:
+        # risk_level 값이 없으면 기본값으로 "정상"을 사용합니다.
+        lv = r.get("risk_level", "정상")
+        # 해당 위험도 개수를 1 증가시킵니다.
+        counts[lv] = counts.get(lv, 0) + 1
+        # 위험 등급이면 frame_id를 따로 기록합니다.
+        if lv == "위험":
+            danger_ids.append(r["frame_id"])
+
+    # 결과를 JSON 문자열로 반환합니다.
+    # ensure_ascii=False를 사용해야 한글이 깨지지 않습니다.
+    return json.dumps(
+        {
+            **counts,   # 
+            "위험_프레임_ids": danger_ids,
+        },
+        ensure_ascii=False,
+    )
+
+@tool
+
+def count_objects_in_zone(frames_json: str, zone: str) -> str:
+
+    """
+    특정 구역(zone)에서 탐지된 객체 수를 집계합니다.
+    "창고 출입구 탐지 건수", "주차장 A 인원" 등의 질문에 사용하세요.
+    zone 파라미터에는 구역 이름을 정확히 입력하세요.
+
+    Args:
+        frames_json: location, detections 정보가 포함된 원본 프레임 JSON 문자열
+        zone: 집계할 구역 이름
+
+    Returns:
+        해당 구역의 프레임 수, 전체 탐지 수, 프레임당 평균 탐지 수 JSON 문자열
+    """
+
+    # JSON 문자열을 Python 리스트로 변환합니다.
+    data = json.loads(frames_json)
+    # 사용자가 요청한 구역과 location이 같은 프레임만 모읍니다.
+
+    zone_frames = [
+        f for f in data
+        if f["location"] == zone
+    ]
+
+    # 해당 구역 프레임들에서 탐지된 객체 수를 모두 더합니다.
+    total = sum(
+        len(f["detections"])
+        for f in zone_frames
+    )
+
+    # 프레임당 평균 탐지 수를 계산합니다.
+    # zone_frames가 비어 있으면 0으로 나누는 오류를 막기 위해 0을 반환합니다.
+    avg = round(total / len(zone_frames), 1) if zone_frames else 0
+    
+    # 집계 결과를 JSON 문자열로 반환합니다.
+    return json.dumps(
+        {
+            "zone": zone,
+            "frame_count": len(zone_frames),
+            "total_detections": total,
+            "avg_per_frame": avg,
+        },
+        ensure_ascii=False,
+    )
+
+@tool
+def filter_danger_frames(results_json: str) -> str:
+
+    """
+    위험(risk_level = '위험') 등급 프레임만 필터링해서 반환합니다.
+    "위험 프레임 목록", "위험한 것만 뽑아줘" 등의 질문에 사용하세요.
+
+    Args:
+        results_json: risk_level이 포함된 CCTV 분석 결과 JSON 문자열
+
+    Returns:
+        위험 등급 프레임 목록 JSON 문자열
+    """
+
+    # results_json:
+    #   risk_level, reason, action 중심 데이터
+    #
+    # 따라서 위험 프레임을 필터링할 때는 results_json을 받아야 합니다.
+    data = json.loads(results_json)
+
+    # risk_level이 "위험"인 프레임만 추립니다.
+    danger = [
+        r for r in data
+        if r.get("risk_level") == "위험"
+    ]
+
+    # 위험 프레임 목록을 JSON 문자열로 반환합니다.
+
+    return json.dumps(
+        danger,
+        ensure_ascii=False,
+    )
+
+# LLM에게 제공할 tool 목록
+tool_list = [
+    get_risk_summary,
+    count_objects_in_zone,
+    filter_danger_frames
+]
+
+# LLM의 tool_calls에는 Tool 이름이 문자열로 들어옵니다.
+#
+# 예:
+#   "name": "get_risk_summary"
+#
+# 그러므로 Tool 이름으로 실제 Tool 객체를 빠르게 찾을 수 있도록
+# 딕셔너리를 만들어 둡니다.
+tools_map = {
+    t.name : t for t in tool_list
+}
+
+# LLM에 tool 등록 : bind_tools()
+# bind_tools() : LLM에게 사용 가능한 Tool 목록을 알려주는 함수
+llm_with_tools = llm.bind_tools(tool_list)
+
+# =============================================
+
+# LLM 호출해달라는 tool을 실행해주는 함수
+def execute_tool_calls(tool_calls : list) -> list :
+    """
+    LLM이 요청한 tool_calls를 실제로 실행하고
+    ToolMessage 리스트로 변환합니다.
+    
+    Args:
+        tool_calls:
+            AIMessage.tool_calls에 들어 있는 Tool 호출 요청 목록
+            
+            예:
+            [
+                {
+                    "id": "call_abc123",
+                    "name": "get_risk_summary",
+                    "args": {
+                        "results_json": "..."
+                    }
+                }
+            ]
+
+    Returns:
+        ToolMessage 리스트
+    """
+    tool_messages = []
+
+    for tc in tool_calls :
+        tool_name = tc['name']  # 호출할 tool 이름
+        tool_args = tc['args']  # tool을 호출할때 필요한 매개변수
+
+        # LLM에게 ToolMessage 리스트를 줄 때 어떤 Tool에 대한 호출 결과인지를 알려주기 위해
+        tool_id = tc['id']
+
+        # 디버깅 및 수업 시연용 출력입니다.
+        print(f"    🔧 Tool 실행: {tool_name}({list(tool_args.keys())})")
+
+        # 문자열 tool 이름으로 실제 tool객체를 찾아 실행
+        result = tools_map[tool_name].invoke(tool_args)
+
+        # Tool 실행 결과를 ToolMessage로 감쌉니다.
+        #
+        # content:
+        #   Tool 실행 결과
+        #
+        # tool_call_id:
+        #   response.tool_calls 안에 있던 id와 반드시 일치해야 합니다.
+        tool_messages.append(
+            ToolMessage(
+                content=result,
+                tool_call_id=tool_id,
+            )
+        )
+    # ToolMessage 리스트를 반환합니다.
+    return tool_messages
+
+
+
+# llm, if문 사이
+class CCTVLLMAgent() :
+    """
+    실제 ChatOpenAI를 사용하는 CCTV 분석 Agent입니다.
+    이 Agent는 다음 작업을 수행합니다.
+
+    1. 사용자 질문을 받습니다.
+    2. LLM에게 질문과 분석 데이터를 전달합니다.
+    3. LLM이 Tool 사용 여부를 판단합니다.   (thought)
+    4. Tool이 필요하면 실제 Tool을 실행합니다.  (action)
+    5. Tool 결과를 다시 LLM에게 전달합니다. (Observation)
+    6. LLM이 최종 자연어 답변을 생성합니다.
+    """
+
+    # LLM에게 알려줄 역할과 Tool 선택 기준입니다.
+
+    SYSTEM_PROMPT = """당신은 CCTV 보안 분석 AI 어시스턴트입니다.
+    운영자의 질문에 답변하기 위해 제공된 Tool을 적절히 활용하세요.
+
+    데이터 구분:
+
+    - results_json: risk_level, reason, action 등 위험도 분석 결과
+    - frames_json : location, detections, bbox 등 원본 탐지 결과
+
+    Tool 선택 기준:
+    - 전체 요약, 위험 건수 질문 → get_risk_summary
+    - 특정 구역 탐지 현황 질문 → count_objects_in_zone
+    - 위험 프레임 목록 질문   → filter_danger_frames
+
+    중요:
+    - 위험도, 위험 프레임, risk_level 관련 질문에는 results_json을 사용하세요.
+    - 구역, 위치, detections, bbox 관련 질문에는 frames_json을 사용하세요.
+
+    답변은 한국어로, 핵심 수치를 포함해 명확하게 작성하세요.
+    """
+
+    def __init__(self, results_json, frames_json) :
+        """
+        Agent 생성자(초기화 함수)입니다.
+        Args:
+
+            results_json:
+                위험도 분석 결과 JSON 문자열입니다.
+                risk_level, reason, action 등이 들어 있습니다.
+
+            frames_json:
+                원본 탐지 결과 JSON 문자열입니다.
+                location, detections, bbox 등이 들어 있습니다.
+        """
+        self.results_json = results_json
+        self.frames_json = frames_json
+
+        # Agent의 실행 이력을 저장하는 공간
+        # 각 질문마다 (query, tool_calls, answer) 등의 정보를 기록
+        self.scratchpad= []
+    
+    def run(self, query:str) -> str :
+        """
+        Agent 실행 메서드입니다.
+        Args:
+            query:
+                사용자의 자연어 질문
+        Returns:
+            LLM이 생성한 최종 답변 문자열
+        """
+        print(f"\n  📌 질문: {query}")
+        
+        # ─────────────────────────────────────────────────────
+        # 1단계: 메시지 구성 (LLM에게 전달할 프롬포트 조립)
+        # ─────────────────────────────────────────────────────
+        # SystemMessage:
+        #   LLM의 역할과 규칙을 알려줍니다.
+        #
+        # HumanMessage:
+        #   사용자의 질문과 분석 데이터를 함께 전달합니다.
+        #
+        # 데이터를 함께 넣는 이유:
+        #   LLM이 Tool을 호출할 때 필요한 인자를 구성해야 하기 때문입니다.
+        Messages = [
+            SystemMessage(content=self.SYSTEM_PROMPT),
+            HumanMessage(
+                content=f"{query}\n\n"
+                f"[분석데이터]\n"
+                f"result_json : {self.results_json}\n"
+                f"frames_json : {self.frames_json}"
+            ), 
+        ]
+
+        # ─────────────────────────────────────────────────────
+        # 2단계: LLM 호출 - Tool 선택 단계
+        # ─────────────────────────────────────────────────────
+        #
+        # 여기서 LLM은 사용자의 질문을 읽고 판단합니다.
+        #
+        # 가능한 결과:
+        #   1. Tool이 필요 없다고 판단
+        #      → response.content에 바로 답변 생성
+        #
+        #   2. Tool이 필요하다고 판단
+        #      → response.tool_calls에 답변 작성을 위해 어떤 툴이 필요한지 Tool 호출 요청 생성
+        #
+        # 주의:
+        #   이 단계에서 Tool이 실제 실행된 것은 아닙니다.
+        print("  💭 LLM 판단 중...", end=" ", flush=True)
+        response = llm_with_tools.invoke(messages)
+        print("완료")
+
+        if response.tool_calls :    # Tool이 필요하다고 판단
+            # LLM이 선택한 Tool 이름을 확인합니다.
+            print(f"  🔍 Tool 선택: {[tc['name'] for tc in response.tool_calls]}")
+
+            # LLM이 답변한 내용을 대화 이력에 추가. (LLM api는 기억이 없다.)
+            Messages.append(response)
+
+            # LLM이 호출을 요청한 tool을 실제 실행
+            excute_tool_calls(response.tool_calls)
+
+
+
 
 if __name__ == "__main__" :
     # 테스트 데이터를 만들기 위해 random 모듈을 사용합니다.
