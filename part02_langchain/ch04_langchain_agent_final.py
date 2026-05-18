@@ -508,22 +508,15 @@ if __name__ == "__main__" :
         for i in range(1, 11)
 
     ]
-    # ─────────────────────────────────────────────────────────
 
+    # ─────────────────────────────────────────────────────────
     # 원본 탐지 프레임 데이터 생성
-
     # ─────────────────────────────────────────────────────────
-
     #
-
     # frames_json으로 변환될 데이터입니다.
-
     #
-
     # 이 데이터에는 location, detections, bbox가 들어 있으므로,
-
     # 특정 구역 탐지 수 집계 Tool에서 사용합니다.
-
     frames = [
         {
             "frame_id": i,
@@ -544,4 +537,29 @@ if __name__ == "__main__" :
     results_json = json.dumps(results, ensure_ascii=False)
     frames_json = json.dumps(frames, ensure_ascii=False)
 
+    # Agent 객체 생성
     agent = CCTVLLMAgent(results_json=results_json, frames_json=frames_json)
+
+    # 테스트 질문 목록입니다.
+
+    queries = [
+        "위험 프레임 요약해줘",
+        "창고 출입구 탐지 카운트 알려줘",
+        "위험 프레임 목록 뽑아줘",
+    ]
+    # 시나리오 실행 시작
+    print("=" * 50)
+    print("  CCTV LLM Agent 시나리오")
+    print("=" * 50)
+    # 질문을 하나씩 실행합니다.
+    for q in queries:
+        answer = agent.run(q)
+        print(f"\n  최종 답변:\n  {answer}\n")
+        print("─" * 50)
+
+    # scratchpad 출력
+    #
+    # 어떤 질문에서 어떤 Tool이 선택되었는지 확인합니다.
+    print(f"\n스크래치패드: {len(agent.scratchpad)}개 항목 기록됨")
+    for item in agent.scratchpad:
+        print(f"  [{item['query'][:20]}] → Tool: {item['tool_calls']}")
