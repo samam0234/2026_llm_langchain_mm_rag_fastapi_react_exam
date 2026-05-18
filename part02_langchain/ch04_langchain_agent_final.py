@@ -390,7 +390,7 @@ class CCTVLLMAgent() :
         #
         # 데이터를 함께 넣는 이유:
         #   LLM이 Tool을 호출할 때 필요한 인자를 구성해야 하기 때문입니다.
-        Messages = [
+        messages = [
             SystemMessage(content=self.SYSTEM_PROMPT),
             HumanMessage(
                 content=f"{query}\n\n"
@@ -424,10 +424,10 @@ class CCTVLLMAgent() :
             print(f"  🔍 Tool 선택: {[tc['name'] for tc in response.tool_calls]}")
 
             # LLM이 답변한 내용을 대화 이력에 추가. (LLM api는 기억이 없다.)
-            Messages.append(response)
+            messages.append(response)
 
             # LLM이 호출을 요청한 tool을 실제 실행
-            excute_tool_calls(response.tool_calls)
+            execute_tool_calls(response.tool_calls)
 
 
 
