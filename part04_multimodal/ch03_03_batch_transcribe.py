@@ -21,7 +21,7 @@ def batch_transcribe(audio_dir:str,model_name:str = "base") -> list :
                 "file":     "radio_001.wav",
                 "text":     "전체 변환 텍스트",
                 "language": "ko",
-                "segments": [...]
+                "segments": [...] 
             },
             ...
         ]
@@ -54,5 +54,6 @@ def batch_transcribe(audio_dir:str,model_name:str = "base") -> list :
         print(f"  → {result['text'][:60]}")
 
     return results
+
 
 batch_transcribe("./waves", model_name="base")
