@@ -116,40 +116,135 @@ def merge_consecutive_segments(segments : list) -> list :
             
     return merged
 
-# ─────────────────────────────────────────────────────────────
-# STEP 1: Whisper STT
-#
-# language="en": 영어 무전 → "ko"로 바꾸면 한국어
-# fp16=False:    CPU 환경 필수. GPU는 True로 변경 시 2배 빠름
-# initial_prompt: 도메인 힌트 → 인식 정확도 향상
-# ─────────────────────────────────────────────────────────────
-print("=" * 60)
-print("STEP 1: Whisper STT")
-print("=" * 60)
 
-whisper_model = whisper.load_model(MODEL_NAME)
+# ============================================================
+# ⚠️ 실행 방지 처리 (Practice 파일 import 시 자동 실행 방지)
+# ============================================================
+# 이 파일을 import할 때 아래 전체 파이프라인이 자동으로 실행되지 않도록
+# 모든 실행 코드를 if __name__ == "__main__": 로 감쌌습니다.
+# Practice 파일에서 이 파일을 import해서 헬퍼 함수(get_speaker_at 등)만 사용하기 위한 조치입니다.
+# ============================================================
 
-result = whisper_model.transcribe(
-    AUDIO_PATH,
-    language="en",
-    task="transcribe",
-    initial_prompt=(
-        "Security radio communication. "
-        "Units responding to suspicious activity at parking structure."
-    ),
-    verbose=False,
-    fp16=False,
-)
+if __name__ == "__main__":
 
-print(f"✅ STT 완료 — 세그먼트 수: {len(result['segments'])}개")
-print(f"   전체 텍스트 미리보기: {result['text'][:80]}...\n")
+    # ─────────────────────────────────────────────────────────────
+    # STEP 1: Whisper STT
+    #
+    # language="en": 영어 무전 → "ko"로 바꾸면 한국어
+    # fp16=False:    CPU 환경 필수. GPU는 True로 변경 시 2배 빠름
+    # initial_prompt: 도메인 힌트 → 인식 정확도 향상
+    # ─────────────────────────────────────────────────────────────
+    print("=" * 60)
+    print("STEP 1: Whisper STT")
+    print("=" * 60)
 
-# 타임스탬프 이용하여 실제 오디옹 길이를 가져와서 보정 비율 계산
-# whisper 세그먼트와 pyannote 세그먼트 구간에 동일 비율 적용
-actual_duration = sf.info(AUDIO_PATH).duration
-print(f'실제 오디오 길이 : {actual_duration}초')
+    whisper_model = whisper.load_model(MODEL_NAME)
 
-correct_timestanps(result['segments'], actual_duration)
+    result = whisper_model.transcribe(
+        AUDIO_PATH,
+        language="en",
+        task="transcribe",
+        initial_prompt=(
+            "Security radio communication. "
+            "Units responding to suspicious activity at parking structure."
+        ),
+        verbose=False,
+        fp16=False,
+    )
+
+    print(f"✅ STT 완료 — 세그먼트 수: {len(result['segments'])}개")
+    print(f"   전체 텍스트 미리보기: {result['text'][:80]}...\n")
+
+    # 타임스탬프 이용하여 실제 오디옹 길이를 가져와서 보정 비율 계산
+    # whisper 세그먼트와 pyannote 세그먼트 구간에 동일 비율 적용
+    actual_duration = sf.info(AUDIO_PATH).duration
+    print(f'실제 오디오 길이 : {actual_duration}초')
+
+    correct_timestanps(result['segments'], actual_duration)
+
+    # ─────────────────────────────────────────────────────────────
+    # STEP 2: pyannote 화자 분리
+    # (이하 모든 실행 코드는 import 시 실행되지 않습니다)
+    # ─────────────────────────────────────────────────────────────
+    print("=" * 60)
+    print("STEP 2: pyannote 화자 분리")
+    print("=" * 60)
+
+    diarization_pipeline = Pipeline.from_pretrained(
+        "pyannote/speaker-diarization-3.1",
+        token=HF_TOKEN,
+    )
+
+    data, sample_rate = sf.read(AUDIO_PATH, dtype="float32")
+    waveform = torch.from_numpy(data).unsqueeze(0)
+
+    output = diarization_pipeline(
+        {"waveform": waveform, "sample_rate": 44100},
+        min_speakers=2,
+        max_speakers=4,
+    )
+
+    annotation = output.speaker_diarization
+
+    print("✅ 화자 분리 완료")
+    print("   감지된 화자 구간:")
+    for turn, _, speaker in annotation.itertracks(yield_label=True):
+        print(f"   {speaker}: {turn.start:.1f}s ~ {turn.end:.1f}s")
+    print()
+
+    # ─────────────────────────────────────────────────────────────
+    # STEP 3: STT + 화자 병합
+    # ─────────────────────────────────────────────────────────────
+    print("=" * 60)
+    print("STEP 3: STT + 화자 병합")
+    print("=" * 60)
+
+    segments_with_speaker = []
+    for seg in result["segments"]:
+        speaker_id = get_speaker_at(annotation, seg["start"], seg["end"])
+        speaker_name = SPEAKER_NAMES.get(speaker_id, speaker_id)
+        segments_with_speaker.append({
+            "speaker": speaker_id,
+            "speaker_name": speaker_name,
+            "start": seg["start"],
+            "end": seg["end"],
+            "text": seg["text"].strip(),
+        })
+
+    merged_segments = merge_consecutive_segments(segments_with_speaker)
+
+    print(f"✅ 병합 완료 — {len(result['segments'])}개 세그먼트 → {len(merged_segments)}개\n")
+
+    # ─────────────────────────────────────────────────────────────
+    # STEP 4: 화자별 대화 전사 출력
+    # ─────────────────────────────────────────────────────────────
+    print("=" * 60)
+    print("STEP 4: 화자별 대화 전사")
+    print("=" * 60)
+    print()
+
+    for seg in merged_segments:
+        start_min = int(seg["start"]) // 60
+        start_sec = seg["start"] % 60
+        end_min   = int(seg["end"])   // 60
+        end_sec   = seg["end"]   % 60
+
+        print(f"┌─ [{seg['speaker_name']}]  "
+              f"{start_min:02d}:{start_sec:05.2f} → {end_min:02d}:{end_sec:05.2f}")
+        print(f"│  {seg['text']}")
+        print("│")
+
+    print("└─ (전사 종료)")
+    print()
+
+    transcript_path = AUDIO_PATH.replace(".wav", "_transcript.txt")
+    with open(transcript_path, "w", encoding="utf-8") as f:
+        f.write("=== 화자별 대화 전사 ===\n\n")
+        for seg in merged_segments:
+            f.write(f"[{seg['speaker_name']}] ({seg['start']:.1f}s ~ {seg['end']:.1f}s)\n")
+            f.write(f"{seg['text']}\n\n")
+
+    print(f"📄 전사 파일 저장: {transcript_path}\n")
 
 # ─────────────────────────────────────────────────────────────
 # STEP 2: pyannote 화자 분리
