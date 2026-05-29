@@ -140,10 +140,10 @@ chroma_db/
 # wav
 # =========================================================
 *.wav
+*.mp3
 
 # =========================================================
 # 개인 파일
 # =========================================================
 part04_multimodal/grok_test.py
 part04_multimodal/ch03_test_batch_trans_hap.py
-part04_multimodal/ch03_04_multi_dialization_Practice.py
