@@ -162,3 +162,12 @@ images/
 # =========================================================
 
 runs/detect/
+
+annotated/
+
+yolo_train/
+
+*.jpg
+*.png
+
+labels/
