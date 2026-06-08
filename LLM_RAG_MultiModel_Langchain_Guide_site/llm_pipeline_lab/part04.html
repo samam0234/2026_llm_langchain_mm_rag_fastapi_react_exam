@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Part 04 • Multimodal (Audio) | ShadowWatch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        .font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 600; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200">
+    <nav class="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl">
+        <div class="max-w-screen-2xl mx-auto px-8 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-x-3">
+                <a href="index.html" class="flex items-center gap-x-3">
+                    <div class="w-8 h-8 rounded-2xl bg-indigo-600 flex items-center justify-center">
+                        <i class="fa-solid fa-shield-halved text-white"></i>
+                    </div>
+                    <span class="font-display text-xl font-semibold">ShadowWatch</span>
+                </a>
+                <span class="text-xs px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-2xl">Part 04</span>
+            </div>
+            <div class="flex items-center gap-x-6 text-sm">
+                <a href="index.html" class="text-zinc-400 hover:text-white">메인으로</a>
+                <a href="https://github.com/samam0234/2026_llm_langchain_mm_rag_fastapi_react_exam/tree/main/part04_multimodal" target="_blank" class="flex items-center gap-x-2 text-zinc-400 hover:text-white">
+                    <i class="fa-brands fa-github"></i> <span>GitHub 폴더</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-screen-xl mx-auto px-8 pt-12 pb-20">
+        <div class="max-w-3xl">
+            <div class="inline-flex items-center px-4 py-1 rounded-3xl bg-emerald-500/10 text-emerald-400 text-sm font-medium mb-4">PART 04 • MULTIMODAL</div>
+            <h1 class="font-display text-6xl tracking-tighter font-semibold">음성 데이터도<br>LLM으로 다루기</h1>
+            <p class="mt-4 text-xl text-zinc-400">Whisper 로컬 모델 + 화자 분리(Diarization)<br>텍스트뿐만 아니라 오디오(음성)도 처리하는 멀티모달의 첫 걸음.</p>
+        </div>
+
+        <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="glass rounded-3xl p-7 border border-white/10">
+                <div class="text-emerald-400 mb-3"><i class="fa-solid fa-microphone fa-2x"></i></div>
+                <div class="font-semibold">Whisper Local</div>
+                <div class="text-xs mt-2 text-zinc-400">OpenAI Whisper 모델을 로컬에서 실행하여 음성을 텍스트로 변환</div>
+            </div>
+            <div class="glass rounded-3xl p-7 border border-white/10">
+                <div class="text-emerald-400 mb-3"><i class="fa-solid fa-list fa-2x"></i></div>
+                <div class="font-semibold">Batch Transcription</div>
+                <div class="text-xs mt-2 text-zinc-400">여러 오디오 파일을 한 번에 처리하는 배치 전사</div>
+            </div>
+            <div class="glass rounded-3xl p-7 border border-white/10">
+                <div class="text-emerald-400 mb-3"><i class="fa-solid fa-users fa-2x"></i></div>
+                <div class="font-semibold">Speaker Diarization</div>
+                <div class="text-xs mt-2 text-zinc-400">"누가 언제 말했는가"를 구분하는 화자 분리 기술</div>
+            </div>
+        </div>
+
+        <div class="mt-10 p-8 glass rounded-3xl border border-white/10">
+            <h3 class="font-semibold mb-3">이 파트의 의미</h3>
+            <p class="text-sm text-zinc-300">Part 01~03이 텍스트 중심이었다면, Part 04는 <strong>음성(오디오)</strong>이라는 또 다른 모달리티를 다룹니다.<br>
+            CCTV 시스템에서는 영상 + 음성(대화 내용)이 함께 분석되어야 더 정확한 보안 판단이 가능합니다.<br>
+            Whisper + Diarization 조합은 실무에서 자주 쓰이는 강력한 멀티모달 기초입니다.</p>
+        </div>
+
+        <div class="mt-8 text-center">
+            <a href="index.html" class="text-sm text-zinc-400 hover:text-white">← 메인 페이지로</a>
+        </div>
+    </div>
+</body>
+</html>

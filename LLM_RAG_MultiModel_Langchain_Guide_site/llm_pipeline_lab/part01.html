@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Part 01 • LLM & ChatGPT API | ShadowWatch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        .font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 600; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .section-header { font-size: 2rem; line-height: 2.25rem; font-weight: 700; letter-spacing: -0.025em; }
+        .code-block { background: #18181b; border: 1px solid rgba(255,255,255,0.1); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200">
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl">
+        <div class="max-w-screen-2xl mx-auto px-8 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-x-3">
+                <a href="index.html" class="flex items-center gap-x-3">
+                    <div class="w-8 h-8 rounded-2xl bg-indigo-600 flex items-center justify-center">
+                        <i class="fa-solid fa-shield-halved text-white"></i>
+                    </div>
+                    <span class="font-display text-xl font-semibold">ShadowWatch</span>
+                </a>
+                <span class="text-xs px-3 py-1 bg-white/10 rounded-2xl text-zinc-400">Part 01</span>
+            </div>
+            <div class="flex items-center gap-x-6 text-sm">
+                <a href="index.html" class="text-zinc-400 hover:text-white">메인으로</a>
+                <a href="https://github.com/samam0234/2026_llm_langchain_mm_rag_fastapi_react_exam/tree/main/part01_llm_chatgpt_api" target="_blank" class="flex items-center gap-x-2 text-zinc-400 hover:text-white">
+                    <i class="fa-brands fa-github"></i> <span>GitHub 폴더</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-screen-xl mx-auto px-8 pt-12 pb-20">
+        <!-- Hero -->
+        <div class="max-w-3xl">
+            <div class="inline-flex items-center px-4 py-1 rounded-3xl bg-orange-500/10 text-orange-400 text-sm font-medium mb-4">PART 01 • LLM 기초</div>
+            <h1 class="font-display text-6xl tracking-tighter font-semibold">ChatGPT API 직접 다루기</h1>
+            <p class="mt-4 text-xl text-zinc-400">.env 보안 관리부터 메시지 구조, 파라미터 튜닝, 비용 계산까지.<br>LangChain 이전에 반드시 알아야 할 OpenAI API의 핵심.</p>
+        </div>
+
+        <!-- Why this part -->
+        <div class="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="glass rounded-3xl p-7 border border-white/10">
+                <div class="text-orange-400 mb-3"><i class="fa-solid fa-key text-2xl"></i></div>
+                <div class="font-semibold mb-2">API 키 안전 관리</div>
+                <div class="text-sm text-zinc-400">python-dotenv로 .env 파일에서 키를 로드. 코드에 하드코딩하지 않는 기본 원칙.</div>
+            </div>
+            <div class="glass rounded-3xl p-7 border border-white/10">
+                <div class="text-orange-400 mb-3"><i class="fa-solid fa-comments text-2xl"></i></div>
+                <div class="font-semibold mb-2">메시지 역할 이해</div>
+                <div class="text-sm text-zinc-400">system (페르소나) + user (질문) 구조. AI의 정체성을 명확히 정의하는 가장 중요한 단계.</div>
+            </div>
+            <div class="glass rounded-3xl p-7 border border-white/10">
+                <div class="text-orange-400 mb-3"><i class="fa-solid fa-calculator text-2xl"></i></div>
+                <div class="font-semibold mb-2">토큰 & 비용 인식</div>
+                <div class="text-sm text-zinc-400">실제 서비스 운영 시 필수. prompt_tokens, completion_tokens, 비용 계산 로직까지 실습.</div>
+            </div>
+        </div>
+
+        <!-- Key Files -->
+        <div class="mt-16">
+            <h3 class="font-semibold text-lg mb-4 flex items-center gap-x-2"><i class="fa-solid fa-folder text-orange-400"></i> 주요 파일</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div class="px-4 py-3 bg-zinc-900 rounded-2xl border border-white/10">ch02_dotenv_apicall.py</div>
+                <div class="px-4 py-3 bg-zinc-900 rounded-2xl border border-white/10">ch02_message_struct.py</div>
+                <div class="px-4 py-3 bg-zinc-900 rounded-2xl border border-white/10">ch02_multiTurnChat.py</div>
+                <div class="px-4 py-3 bg-zinc-900 rounded-2xl border border-white/10">ch02_temperature_comparison.py</div>
+                <div class="px-4 py-3 bg-zinc-900 rounded-2xl border border-white/10">ch02_system_prompt_comparison.py</div>
+                <div class="px-4 py-3 bg-zinc-900 rounded-2xl border border-white/10">ch02_jsonResponse_parsing.py</div>
+            </div>
+        </div>
+
+        <!-- Core Example -->
+        <div class="mt-16">
+            <h3 class="font-semibold text-lg mb-4">대표 코드 예시 — dotenv + 첫 API 호출</h3>
+            <div class="code-block rounded-3xl p-6 text-sm overflow-auto">
+<pre><code>import os
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()
+api_key = os.getenv("OPEN_API_KEY")
+model = os.getenv("OPEN_AI_MODEL")
+
+client = OpenAI(api_key=api_key)
+
+response = client.chat.completions.create(
+    model=model,
+    messages=[
+        {"role": "system", "content": "당신은 AI CCTV 보안 분석 시스템입니다. ..."},
+        {"role": "user", "content": "새벽 2시에 창고 출입구에서 사람 2명이 탐지됐습니다."}
+    ],
+    max_tokens=100
+)
+
+answer = response.choices[0].message.content
+print(f'GPT 답변 : {answer}')
+print(f'토큰 사용량: {response.usage.total_tokens}')
+</code></pre>
+            </div>
+        </div>
+
+        <!-- Variables -->
+        <div class="mt-12">
+            <h3 class="font-semibold text-lg mb-4">주요 변수 정리</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-white/10 text-left">
+                            <th class="py-3 px-4 font-medium text-zinc-400">변수</th>
+                            <th class="py-3 px-4 font-medium text-zinc-400">의미</th>
+                            <th class="py-3 px-4 font-medium text-zinc-400">왜 중요한가?</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/10">
+                        <tr>
+                            <td class="py-3 px-4 font-mono text-orange-400">api_key</td>
+                            <td class="py-3 px-4">os.getenv("OPEN_API_KEY")</td>
+                            <td class="py-3 px-4 text-zinc-400">보안 핵심. 코드에 직접 넣지 않음</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 font-mono text-orange-400">client</td>
+                            <td class="py-3 px-4">OpenAI(api_key=...)</td>
+                            <td class="py-3 px-4 text-zinc-400">공식 클라이언트 객체</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 font-mono text-orange-400">response</td>
+                            <td class="py-3 px-4">chat.completions.create 결과</td>
+                            <td class="py-3 px-4 text-zinc-400">choices, usage, finish_reason 포함</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 font-mono text-orange-400">usage</td>
+                            <td class="py-3 px-4">response.usage</td>
+                            <td class="py-3 px-4 text-zinc-400">prompt/completion/total 토큰</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Key Takeaways -->
+        <div class="mt-12 p-8 glass rounded-3xl border border-white/10">
+            <h3 class="font-semibold mb-4">이 파트에서 배워야 할 핵심 원리</h3>
+            <ul class="space-y-3 text-sm">
+                <li class="flex gap-x-3"><span class="text-orange-400 mt-1">→</span> <span><strong>System Prompt</strong>로 AI의 역할을 명확히 정의하면 출력 품질이 크게 올라간다.</span></li>
+                <li class="flex gap-x-3"><span class="text-orange-400 mt-1">→</span> <span><strong>temperature</strong>와 <strong>max_tokens</strong>를 조절하며 실험 → 창의성 vs 일관성, 비용 trade-off 이해.</span></li>
+                <li class="flex gap-x-3"><span class="text-orange-400 mt-1">→</span> <span>JSON 파싱과 finish_reason 확인 → 실제 서비스에서 LLM 응답을 안정적으로 처리하는 방법.</span></li>
+                <li class="flex gap-x-3"><span class="text-orange-400 mt-1">→</span> <span>비용 계산 로직까지 코드로 구현 → 나중에 대시보드나 모니터링에 그대로 사용 가능.</span></li>
+            </ul>
+        </div>
+
+        <div class="mt-10 text-center">
+            <a href="index.html#principles" class="text-sm text-zinc-400 hover:text-white">← 메인으로 돌아가기 / 전체 파이프라인 보기</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Part 03 • RAG & Vector DB | ShadowWatch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        .font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 600; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .code-block { background: #18181b; border: 1px solid rgba(255,255,255,0.1); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200">
+    <nav class="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl">
+        <div class="max-w-screen-2xl mx-auto px-8 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-x-3">
+                <a href="index.html" class="flex items-center gap-x-3">
+                    <div class="w-8 h-8 rounded-2xl bg-indigo-600 flex items-center justify-center">
+                        <i class="fa-solid fa-shield-halved text-white"></i>
+                    </div>
+                    <span class="font-display text-xl font-semibold">ShadowWatch</span>
+                </a>
+                <span class="text-xs px-3 py-1 bg-violet-500/20 text-violet-400 rounded-2xl">Part 03</span>
+            </div>
+            <div class="flex items-center gap-x-6 text-sm">
+                <a href="index.html" class="text-zinc-400 hover:text-white">메인으로</a>
+                <a href="https://github.com/samam0234/2026_llm_langchain_mm_rag_fastapi_react_exam/tree/main/part03_rag_vectordb" target="_blank" class="flex items-center gap-x-2 text-zinc-400 hover:text-white">
+                    <i class="fa-brands fa-github"></i> <span>GitHub 폴더</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-screen-xl mx-auto px-8 pt-12 pb-20">
+        <div class="max-w-3xl">
+            <div class="inline-flex items-center px-4 py-1 rounded-3xl bg-violet-500/10 text-violet-400 text-sm font-medium mb-4">PART 03 • RAG</div>
+            <h1 class="font-display text-6xl tracking-tighter font-semibold">RAG로 지식을<br>검색하고 증강하기</h1>
+            <p class="mt-4 text-xl text-zinc-400">ChromaDB + Retriever + Multi-Query<br>LLM이 모르는 최신/특정 지식을 검색해서 답변에 활용하는 가장 강력한 기법.</p>
+        </div>
+
+        <div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="glass p-6 rounded-3xl border border-white/10">
+                <div class="text-violet-400"><i class="fa-solid fa-database fa-2x mb-3"></i></div>
+                <div class="font-semibold">Vector Database</div>
+                <div class="text-xs mt-1 text-zinc-400">ChromaDB에 detection_logs.csv를 임베딩하여 저장</div>
+            </div>
+            <div class="glass p-6 rounded-3xl border border-white/10">
+                <div class="text-violet-400"><i class="fa-solid fa-search fa-2x mb-3"></i></div>
+                <div class="font-semibold">Retriever</div>
+                <div class="text-xs mt-1 text-zinc-400">사용자 질문과 유사한 과거 탐지 기록을 자동 검색</div>
+            </div>
+            <div class="glass p-6 rounded-3xl border border-white/10">
+                <div class="text-violet-400"><i class="fa-solid fa-magic fa-2x mb-3"></i></div>
+                <div class="font-semibold">Multi-Query Retriever</div>
+                <div class="text-xs mt-1 text-zinc-400">질문을 여러 형태로 변형하여 검색 정확도 향상</div>
+            </div>
+        </div>
+
+        <div class="mt-12">
+            <h3 class="font-semibold mb-3">RAG가 왜 필요한가?</h3>
+            <p class="text-sm text-zinc-300">일반 LLM은 학습 시점 이후의 데이터나 내부 문서를 모릅니다.<br>
+            RAG는 <strong>검색 → 컨텍스트 추가 → 생성</strong> 과정을 통해 환각을 줄이고, 최신/특정 도메인 지식을 반영한 답변을 만들어냅니다.</p>
+        </div>
+
+        <div class="mt-8 p-6 glass rounded-3xl text-sm">
+            <strong class="text-violet-400">이 파트의 실습 포인트</strong><br>
+            • detection_logs.csv를 벡터화하여 Chroma에 저장<br>
+            • cosine similarity로 가장 관련 있는 과거 사건 검색<br>
+            • 검색 결과를 프롬프트에 주입하여 더 정확한 위험도 판단
+        </div>
+
+        <div class="mt-10 text-center">
+            <a href="index.html" class="text-sm text-zinc-400 hover:text-white">← 메인으로</a>
+        </div>
+    </div>
+</body>
+</html>

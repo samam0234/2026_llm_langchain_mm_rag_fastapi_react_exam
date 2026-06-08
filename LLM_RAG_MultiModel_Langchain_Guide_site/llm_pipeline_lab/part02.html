@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Part 02 • LangChain 핵심 | ShadowWatch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        .font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 600; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .section-header { font-size: 2rem; line-height: 2.25rem; font-weight: 700; letter-spacing: -0.025em; }
+        .code-block { background: #18181b; border: 1px solid rgba(255,255,255,0.1); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200">
+    <nav class="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl">
+        <div class="max-w-screen-2xl mx-auto px-8 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-x-3">
+                <a href="index.html" class="flex items-center gap-x-3">
+                    <div class="w-8 h-8 rounded-2xl bg-indigo-600 flex items-center justify-center">
+                        <i class="fa-solid fa-shield-halved text-white"></i>
+                    </div>
+                    <span class="font-display text-xl font-semibold">ShadowWatch</span>
+                </a>
+                <span class="text-xs px-3 py-1 bg-sky-500/20 text-sky-400 rounded-2xl">Part 02</span>
+            </div>
+            <div class="flex items-center gap-x-6 text-sm">
+                <a href="index.html" class="text-zinc-400 hover:text-white">메인으로</a>
+                <a href="https://github.com/samam0234/2026_llm_langchain_mm_rag_fastapi_react_exam/tree/main/part02_langchain" target="_blank" class="flex items-center gap-x-2 text-zinc-400 hover:text-white">
+                    <i class="fa-brands fa-github"></i> <span>GitHub 폴더</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-screen-xl mx-auto px-8 pt-12 pb-20">
+        <div class="max-w-3xl">
+            <div class="inline-flex items-center px-4 py-1 rounded-3xl bg-sky-500/10 text-sky-400 text-sm font-medium mb-4">PART 02 • LANGCHAIN</div>
+            <h1 class="font-display text-6xl tracking-tighter font-semibold">LangChain으로<br>파이프라인 만들기</h1>
+            <p class="mt-4 text-xl text-zinc-400">LCEL | RunnableLambda | Memory | Output Parser | Agent<br>복잡한 LLM 애플리케이션을 모듈화하고 재사용 가능하게 만드는 핵심 프레임워크.</p>
+        </div>
+
+        <div class="mt-12 grid grid-cols-1 lg:grid-cols-4 gap-5">
+            <div class="glass rounded-3xl p-6 border border-white/10">
+                <div class="text-sky-400 mb-2"><i class="fa-solid fa-link fa-lg"></i></div>
+                <div class="font-semibold">LCEL (LangChain Expression Language)</div>
+                <div class="text-xs mt-2 text-zinc-400">| 연산자로 컴포넌트를 연결. 선언적이고 읽기 쉬운 파이프라인.</div>
+            </div>
+            <div class="glass rounded-3xl p-6 border border-white/10">
+                <div class="text-sky-400 mb-2"><i class="fa-solid fa-magic fa-lg"></i></div>
+                <div class="font-semibold">RunnableLambda</div>
+                <div class="text-xs mt-2 text-zinc-400">임의의 Python 함수를 LangChain 파이프라인에 자연스럽게 삽입.</div>
+            </div>
+            <div class="glass rounded-3xl p-6 border border-white/10">
+                <div class="text-sky-400 mb-2"><i class="fa-solid fa-brain fa-lg"></i></div>
+                <div class="font-semibold">Memory</div>
+                <div class="text-xs mt-2 text-zinc-400">대화 이력을 저장하고 다음 턴에 전달. 상태를 가진 챗봇의 핵심.</div>
+            </div>
+            <div class="glass rounded-3xl p-6 border border-white/10">
+                <div class="text-sky-400 mb-2"><i class="fa-solid fa-robot fa-lg"></i></div>
+                <div class="font-semibold">Agent + ReAct</div>
+                <div class="text-xs mt-2 text-zinc-400">LLM이 도구를 스스로 선택하고 실행하는 에이전트 패턴.</div>
+            </div>
+        </div>
+
+        <div class="mt-14">
+            <h3 class="font-semibold mb-4">대표 예시 — LCEL 파이프라인 (CCTV 분석)</h3>
+            <div class="code-block rounded-3xl p-6 text-xs overflow-auto">
+<pre><code>formatter = RunnableLambda(format_detections)
+cctv_prompt = ChatPromptTemplate.from_messages([...])
+llm = ChatOpenAI(model="gpt-4o", temperature=0)
+json_parser = JsonOutputParser()
+
+analysis_chain = formatter | cctv_prompt | llm | json_parser
+
+result = analysis_chain.invoke(frame_data)
+# result → {"risk_level": "주의", "reason": "...", "action": "..."}</code></pre>
+            </div>
+        </div>
+
+        <div class="mt-10">
+            <h3 class="font-semibold mb-4">Memory를 활용한 실제 챗봇 구조</h3>
+            <div class="text-sm text-zinc-400">InMemoryChatMessageHistory에 이전 HumanMessage + AIMessage를 저장 → 다음 호출 시 전체 history를 함께 전달하여 맥락 유지.</div>
+            <div class="mt-4 p-5 bg-zinc-900 rounded-2xl text-xs font-mono border border-white/10">
+                self.history.add_user_message(user_msg)<br>
+                self.history.add_ai_message(ai_response)<br>
+                messages = [SystemMessage(...), *self.history.messages, HumanMessage(...)]
+            </div>
+        </div>
+
+        <div class="mt-12 p-8 glass rounded-3xl">
+            <h3 class="font-semibold mb-3">이 파트의 핵심 메시지</h3>
+            <p class="text-sm text-zinc-300">LangChain은 단순히 LLM을 호출하는 라이브러리가 아닙니다.<br>
+            <strong>파이프라인을 조립</strong>하고, <strong>상태를 관리</strong>하고, <strong>출력을 구조화</strong>하는 방법을 배우는 파트입니다.<br>
+            이 구조를 이해해야 Part 03(RAG)와 Part 04(Multimodal)를 제대로 확장할 수 있습니다.</p>
+        </div>
+
+        <div class="mt-8 text-center text-sm">
+            <a href="index.html" class="text-zinc-400 hover:text-white">← 메인 페이지로 돌아가기</a>
+        </div>
+    </div>
+</body>
+</html>

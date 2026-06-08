@@ -1,0 +1,1074 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지능형 CCTV 분석 시스템 • LLM Pipeline Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Pyodide for running real Python in browser -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+    <!-- demo.js: 실제 Pyodide 실행 로직 + rich default codes (유지보수용 분리 파일).
+        index.html은 UI 구조 + 최소 glue만 담당. demo.js가 로드되면 전역 함수(loadDemoCategory, runPythonViaPyodide 등)를 제공. -->
+    <script src="demo.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --primary: #6366f1;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section-header {
+            font-size: 2.25rem;
+            line-height: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        .pipeline-step {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .pipeline-step.active {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            border-color: #6366f1;
+        }
+
+        .flow-arrow {
+            transition: all 0.5s ease;
+        }
+
+        .flow-arrow.active {
+            color: #6366f1;
+            transform: scale(1.1);
+        }
+
+        .tech-badge {
+            font-size: 0.75rem;
+            padding: 0.125rem 0.625rem;
+            border-radius: 9999px;
+            font-weight: 500;
+        }
+
+        .explanation-card {
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), 
+                       box-shadow 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        .explanation-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+        }
+
+        .metric {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .nav-active {
+            color: white;
+            border-bottom: 2px solid #6366f1;
+        }
+
+        .code-font {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .subtle-grid {
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .file-card-selected {
+            border-color: #10b981 !important;
+            background-color: rgba(16, 185, 129, 0.05) !important;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200">
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl">
+        <div class="max-w-screen-2xl mx-auto">
+            <div class="px-8 py-5 flex items-center justify-between">
+                <div class="flex items-center gap-x-3">
+                    <!-- Logo -->
+                    <div class="flex items-center gap-x-3">
+                        <div class="w-9 h-9 rounded-2xl bg-indigo-600 flex items-center justify-center">
+                            <i class="fa-solid fa-shield-halved text-white text-2xl"></i>
+                        </div>
+                        <div>
+                            <span class="font-display text-2xl font-semibold tracking-tighter">ShadowWatch</span>
+                            <span class="text-xs text-zinc-500 font-mono ml-1">AI</span>
+                        </div>
+                    </div>
+                    <div class="px-3 py-1 rounded-full bg-white/5 text-xs font-medium flex items-center gap-x-1.5 border border-white/10">
+                        <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                        <span class="text-emerald-400 text-xs font-semibold">BiNCS 2026</span>
+                    </div>
+
+                    <!-- Pyodide Status (B-2) -->
+                    <div id="pyodide-status" class="px-3 py-1 rounded-full bg-zinc-800 text-xs text-zinc-400">
+                        Pyodide 로딩 대기 중...
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-x-8 text-sm">
+                    <a href="#architecture" class="hover:text-white transition-colors text-zinc-400">아키텍처</a>
+                    <a href="#principles" class="hover:text-white transition-colors text-zinc-400">핵심 원리</a>
+                    <a href="#demo" class="hover:text-white transition-colors text-zinc-400">인터랙티브 데모</a>
+                    <a href="#curriculum" class="hover:text-white transition-colors text-zinc-400">교육 연계</a>
+                    
+                    <div class="flex items-center gap-x-3">
+                        <a href="https://github.com/samam0234/2026_llm_langchain_mm_rag_fastapi_react_exam.git" 
+                           target="_blank"
+                           class="flex items-center gap-x-2 px-4 py-2 rounded-2xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium">
+                            <i class="fa-brands fa-github"></i>
+                            <span>GitHub</span>
+                        </a>
+                        <button onclick="document.getElementById('detailed-md').scrollIntoView({ behavior: 'smooth' })" 
+                                class="px-5 py-2 rounded-2xl bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-100 transition-all flex items-center gap-x-2">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span>상세 설명서</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="max-w-screen-2xl mx-auto px-8 pt-16 pb-20">
+        <div class="max-w-4xl">
+            <div class="inline-flex items-center gap-x-2 px-4 py-1.5 rounded-3xl bg-white/5 border border-white/10 mb-6">
+                <span class="text-emerald-400">
+                    <i class="fa-solid fa-check-double"></i>
+                </span>
+                <span class="text-sm font-medium">BiNCS AI·데이터 엔지니어 양성 과정 • LLM 모듈 실습</span>
+            </div>
+            
+            <h1 class="font-display text-7xl leading-[1.05] tracking-tighter font-semibold mb-6">
+                지능형 CCTV 보안 분석.<br>
+                <span class="bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">LangChain으로 구현하다</span>
+            </h1>
+            
+            <p class="max-w-xl text-xl text-zinc-400 mb-10">
+                OpenCV가 탐지한 객체를 LLM이 실시간으로 분석하고 위험도를 판단합니다.<br>
+                LCEL 파이프라인, 메모리, RAG까지 — 실무에서 쓰는 구조를 한눈에 이해하세요.
+            </p>
+            
+            <div class="flex items-center gap-x-4">
+                <button onclick="document.getElementById('architecture').scrollIntoView({ behavior: 'smooth' })" 
+                        class="group flex items-center justify-center gap-x-3 bg-indigo-600 hover:bg-indigo-500 transition-all px-8 h-14 rounded-3xl font-semibold text-lg">
+                    <span>파이프라인 구조 보기</span>
+                    <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                </button>
+                
+                <button onclick="startSimulation()" 
+                        class="flex items-center justify-center gap-x-3 border border-white/30 hover:bg-white/5 transition-all px-8 h-14 rounded-3xl font-semibold text-lg">
+                    <i class="fa-solid fa-play mr-1"></i>
+                    <span>시뮬레이션 실행</span>
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-x-8 mt-10 text-sm text-zinc-500">
+                <div class="flex items-center gap-x-2">
+                    <i class="fa-solid fa-check text-emerald-400"></i>
+                    <span>실제 코드 기반</span>
+                </div>
+                <div class="flex items-center gap-x-2">
+                    <i class="fa-solid fa-check text-emerald-400"></i>
+                    <span>LCEL + RAG + Memory</span>
+                </div>
+                <div class="flex items-center gap-x-2">
+                    <i class="fa-solid fa-check text-emerald-400"></i>
+                    <span>JSON 구조화 출력</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Problem Statement -->
+    <div class="max-w-screen-2xl mx-auto px-8 pb-16">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-5">
+                <div class="sticky top-24">
+                    <div class="text-indigo-400 text-sm font-semibold tracking-[3px] mb-3">THE PROBLEM</div>
+                    <h2 class="section-header tracking-tight">새벽 2시, 창고에<br>사람이 나타났다.</h2>
+                    <p class="mt-6 text-zinc-400 text-[15px] leading-relaxed">
+                        단순한 움직임 감지만으로는 부족합니다.<br>
+                        "누구인가?", "위험한가?", "과거에 비슷한 사례가 있었나?"<br>
+                        까지 판단해야 진짜 보안입니다.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="lg:col-span-7">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass rounded-3xl p-6 border border-white/10">
+                        <div class="text-red-400 mb-4">
+                            <i class="fa-solid fa-exclamation-triangle text-3xl"></i>
+                        </div>
+                        <div class="font-semibold mb-2">기존 방식의 한계</div>
+                        <div class="text-sm text-zinc-400">단순 알림만 발생 → 운영자 피로 증가, 오탐률 높음</div>
+                    </div>
+                    <div class="glass rounded-3xl p-6 border border-white/10">
+                        <div class="text-amber-400 mb-4">
+                            <i class="fa-solid fa-brain text-3xl"></i>
+                        </div>
+                        <div class="font-semibold mb-2">LLM의 역할</div>
+                        <div class="text-sm text-zinc-400">탐지 결과를 문맥 이해 + 위험도 판단 + 조치 제안</div>
+                    </div>
+                    <div class="glass rounded-3xl p-6 border border-white/10">
+                        <div class="text-emerald-400 mb-4">
+                            <i class="fa-solid fa-link text-3xl"></i>
+                        </div>
+                        <div class="font-semibold mb-2">우리가 만든 해결책</div>
+                        <div class="text-sm text-zinc-400">OpenCV + LangChain 파이프라인으로 지능형 판단 시스템 구축</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Architecture Section -->
+    <div id="architecture" class="max-w-screen-2xl mx-auto px-8 py-16 border-t border-white/10 bg-zinc-900/50">
+        <div class="max-w-5xl mx-auto">
+            <div class="flex items-end justify-between mb-10">
+                <div>
+                    <div class="text-indigo-400 text-sm font-semibold tracking-[3px]">SYSTEM ARCHITECTURE</div>
+                    <h2 class="section-header tracking-tight mt-2">전체 파이프라인 구조</h2>
+                </div>
+                <button onclick="startPipelineAnimation()" 
+                        class="flex items-center gap-x-2 px-5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/20 text-sm font-medium transition-all">
+                    <i class="fa-solid fa-play mr-2"></i>
+                    <span>흐름 애니메이션 재생</span>
+                </button>
+            </div>
+
+            <!-- Pipeline Visual -->
+            <div class="relative">
+                <!-- Pipeline Flow -->
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-3 items-center" id="pipeline-container">
+                    
+                    <!-- Step 1: OpenCV -->
+                    <div class="pipeline-step group bg-zinc-900 border border-white/15 rounded-3xl p-5 cursor-pointer" onclick="highlightStep(0)">
+                        <div class="flex items-center gap-x-3 mb-4">
+                            <div class="w-9 h-9 rounded-2xl bg-orange-500/20 flex items-center justify-center text-orange-400">
+                                <i class="fa-solid fa-video text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold">OpenCV / YOLO</div>
+                                <div class="text-xs text-zinc-500">Computer Vision</div>
+                            </div>
+                        </div>
+                        <div class="text-sm text-zinc-400">실시간 프레임 분석<br>객체 탐지 (사람, 차량 등)</div>
+                        <div class="mt-4 text-[10px] font-mono bg-black/40 px-3 py-1 rounded-xl w-fit">detections: list[dict]</div>
+                    </div>
+
+                    <div class="hidden md:flex justify-center">
+                        <div class="flow-arrow text-zinc-700 text-2xl"><i class="fa-solid fa-arrow-right"></i></div>
+                    </div>
+
+                    <!-- Step 2: Formatter -->
+                    <div class="pipeline-step group bg-zinc-900 border border-white/15 rounded-3xl p-5 cursor-pointer" onclick="highlightStep(1)">
+                        <div class="flex items-center gap-x-3 mb-4">
+                            <div class="w-9 h-9 rounded-2xl bg-sky-500/20 flex items-center justify-center text-sky-400">
+                                <i class="fa-solid fa-magic text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold">RunnableLambda</div>
+                                <div class="text-xs text-zinc-500">Formatter</div>
+                            </div>
+                        </div>
+                        <div class="text-sm text-zinc-400">탐지 결과를<br>프롬프트용 텍스트로 변환</div>
+                        <div class="mt-4 text-[10px] font-mono bg-black/40 px-3 py-1 rounded-xl w-fit">format_detections()</div>
+                    </div>
+
+                    <div class="hidden md:flex justify-center">
+                        <div class="flow-arrow text-zinc-700 text-2xl"><i class="fa-solid fa-arrow-right"></i></div>
+                    </div>
+
+                    <!-- Step 3: Prompt -->
+                    <div class="pipeline-step group bg-zinc-900 border border-white/15 rounded-3xl p-5 cursor-poi
+                    nter" onclick="highlightStep(2)">
+                        <div class="flex items-center gap-x-3 mb-4">
+                            <div class="w-9 h-9 rounded-2xl bg-violet-500/20 flex items-center justify-center text-violet-400">
+                                <i class="fa-solid fa-comment-dots text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold">ChatPromptTemplate</div>
+                                <div class="text-xs text-zinc-500">Prompt Engineering</div>
+                            </div>
+                        </div>
+                        <div class="text-sm text-zinc-400">시스템 페르소나 +<br>탐지 데이터 주입</div>
+                        <div class="mt-4 text-[10px] font-mono bg-black/40 px-3 py-1 rounded-xl w-fit">risk_level | reason | action</div>
+                    </div>
+
+                    <div class="hidden md:flex justify-center">
+                        <div class="flow-arrow text-zinc-700 text-2xl"><i class="fa-solid fa-arrow-right"></i></div>
+                    </div>
+
+                    <!-- Step 4: LLM -->
+                    <div class="pipeline-step group bg-zinc-900 border border-white/15 rounded-3xl p-5 cursor-pointer" onclick="highlightStep(3)">
+                        <div class="flex items-center gap-x-3 mb-4">
+                            <div class="w-9 h-9 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                <i class="fa-solid fa-robot text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold">ChatOpenAI</div>
+                                <div class="text-xs text-zinc-500">gpt-4o • temperature=0</div>
+                            </div>
+                        </div>
+                        <div class="text-sm text-zinc-400">지능적 위험도 판단<br>조치사항 제안</div>
+                        <div class="mt-4 text-[10px] font-mono bg-black/40 px-3 py-1 rounded-xl w-fit">JSON 응답 생성</div>
+                    </div>
+
+                    <div class="hidden md:flex justify-center">
+                        <div class="flow-arrow text-zinc-700 text-2xl"><i class="fa-solid fa-arrow-right"></i></div>
+                    </div>
+
+                    <!-- Step 5: Parser + Result -->
+                    <div class="pipeline-step group bg-zinc-900 border border-white/15 rounded-3xl p-5 cursor-pointer" onclick="highlightStep(4)">
+                        <div class="flex items-center gap-x-3 mb-4">
+                            <div class="w-9 h-9 rounded-2xl bg-rose-500/20 flex items-center justify-center text-rose-400">
+                                <i class="fa-solid fa-file-export text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold">JsonOutputParser</div>
+                                <div class="text-xs text-zinc-500">+ Memory</div>
+                            </div>
+                        </div>
+                        <div class="text-sm text-zinc-400">구조화된 dict 반환<br>대화 이력 자동 저장</div>
+                        <div class="mt-4 text-[10px] font-mono bg-black/40 px-3 py-1 rounded-xl w-fit">{"risk_level": "위험"}</div>
+                    </div>
+                </div>
+
+                <!-- Status Bar -->
+                <div class="mt-8 flex items-center justify-between text-xs px-1">
+                    <div class="flex items-center gap-x-2 text-zinc-500">
+                        <div class="flex -space-x-1">
+                            <div class="w-2.5 h-2.5 bg-orange-400 rounded-full ring-2 ring-zinc-950"></div>
+                            <div class="w-2.5 h-2.5 bg-sky-400 rounded-full ring-2 ring-zinc-950"></div>
+                            <div class="w-2.5 h-2.5 bg-violet-400 rounded-full ring-2 ring-zinc-950"></div>
+                        </div>
+                        <span>실시간 파이프라인</span>
+                    </div>
+                    <div class="font-mono text-emerald-400">실행 시간 &lt; 800ms</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Principles -->
+    <div id="principles" class="max-w-screen-2xl mx-auto px-8 py-20">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-12">
+                <div class="text-indigo-400 text-sm font-semibold tracking-[3px]">CORE PRINCIPLES</div>
+                <h2 class="section-header tracking-tight mt-3">이 코드가 중요한 이유</h2>
+                <p class="text-zinc-400 mt-4 max-w-md mx-auto">단순한 API 호출이 아닌, 실무에서 바로 확장 가능한 구조를 배웁니다.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <!-- Principle 1 -->
+                <div class="explanation-card glass border border-white/10 rounded-3xl p-7 group">
+                    <div class="text-indigo-400 mb-5"><i class="fa-solid fa-link text-3xl"></i></div>
+                    <div class="font-semibold text-xl mb-3">LCEL 파이프라인</div>
+                    <div class="text-sm text-zinc-400 leading-relaxed">| 연산자로 각 단계를 독립적으로 연결. 테스트와 유지보수가 쉬워집니다.</div>
+                    <div class="mt-6 pt-6 border-t border-white/10 text-xs text-zinc-500 font-mono">formatter | prompt | llm | parser</div>
+                </div>
+
+                <!-- Principle 2 -->
+                <div class="explanation-card glass border border-white/10 rounded-3xl p-7 group">
+                    <div class="text-violet-400 mb-5"><i class="fa-solid fa-brain text-3xl"></i></div>
+                    <div class="font-semibold text-xl mb-3">메모리 (Memory)</div>
+                    <div class="text-sm text-zinc-400 leading-relaxed">이전 대화와 분석 결과를 기억합니다. 단일 턴이 아닌 연속적인 지능형 대화가 가능해집니다.</div>
+                    <div class="mt-6 text-xs text-emerald-400 flex items-center gap-x-1.5">
+                        <i class="fa-solid fa-check"></i> 
+                        <span>InMemoryChatMessageHistory</span>
+                    </div>
+                </div>
+
+                <!-- Principle 3 -->
+                <div class="explanation-card glass border border-white/10 rounded-3xl p-7 group">
+                    <div class="text-rose-400 mb-5"><i class="fa-solid fa-file-code text-3xl"></i></div>
+                    <div class="font-semibold text-xl mb-3">구조화된 출력</div>
+                    <div class="text-sm text-zinc-400 leading-relaxed">JSON 강제로 LLM 응답을 항상 예측 가능하게 만듭니다. 프론트엔드 연동이 매우 쉬워집니다.</div>
+                    <div class="mt-6 text-xs px-3 py-1 bg-white/5 rounded-2xl w-fit font-mono text-rose-300">risk_level | reason | action</div>
+                </div>
+
+                <!-- Principle 4 -->
+                <div class="explanation-card glass border border-white/10 rounded-3xl p-7 group">
+                    <div class="text-sky-400 mb-5"><i class="fa-solid fa-database text-3xl"></i></div>
+                    <div class="font-semibold text-xl mb-3">RAG (검색 증강 생성)</div>
+                    <div class="text-sm text-zinc-400 leading-relaxed">과거 탐지 로그를 벡터DB에 저장하고 필요할 때 검색합니다. 환각을 줄이고 사실 기반 판단을 합니다.</div>
+                    <div class="mt-6 text-xs text-sky-400 flex items-center gap-x-1.5">
+                        <i class="fa-solid fa-check"></i> 
+                        <span>ChromaDB + MultiQueryRetriever</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Part Category Navigation -->
+    <div class="max-w-screen-2xl mx-auto px-8 py-16 border-t border-white/10">
+        <div class="max-w-5xl mx-auto">
+            <div class="flex items-end justify-between mb-8">
+                <div>
+                    <div class="text-indigo-400 text-sm font-semibold tracking-[3px]">LEARNING PATH</div>
+                    <h2 class="section-header tracking-tight">Part별 상세 가이드</h2>
+                    <p class="text-zinc-400 mt-2">GitHub 레포지토리의 폴더 구조에 맞춰 단계별로 학습하세요.</p>
+                </div>
+            </div>
+
+            <!-- Part 구조 태그 버튼 (빠른 이동) -->
+            <div class="mb-8">
+                <div class="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+                    <a href="part01.html" 
+                       class="group flex items-center gap-x-2 px-5 py-2.5 rounded-3xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-400 text-sm font-medium transition-all active:scale-[0.985]">
+                        <span class="font-mono text-xs opacity-75">01</span>
+                        <span>LLM &amp; ChatGPT API</span>
+                    </a>
+                    
+                    <div class="text-zinc-700 text-lg">→</div>
+                    
+                    <a href="part02.html" 
+                       class="group flex items-center gap-x-2 px-5 py-2.5 rounded-3xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-400 text-sm font-medium transition-all active:scale-[0.985]">
+                        <span class="font-mono text-xs opacity-75">02</span>
+                        <span>LangChain 핵심</span>
+                    </a>
+                    
+                    <div class="text-zinc-700 text-lg">→</div>
+                    
+                    <a href="part03.html" 
+                       class="group flex items-center gap-x-2 px-5 py-2.5 rounded-3xl bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 text-violet-400 text-sm font-medium transition-all active:scale-[0.985]">
+                        <span class="font-mono text-xs opacity-75">03</span>
+                        <span>RAG &amp; Vector DB</span>
+                    </a>
+                    
+                    <div class="text-zinc-700 text-lg">→</div>
+                    
+                    <a href="part04.html" 
+                       class="group flex items-center gap-x-2 px-5 py-2.5 rounded-3xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm font-medium transition-all active:scale-[0.985]">
+                        <span class="font-mono text-xs opacity-75">04</span>
+                        <span>Multimodal (Audio)</span>
+                    </a>
+                </div>
+                <div class="text-center mt-2 text-[10px] text-zinc-500">클릭하면 해당 Part 페이지로 바로 이동합니다</div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                
+                <!-- Part 01 Card -->
+                <a href="part01.html" class="group block glass border border-white/10 hover:border-indigo-500/50 rounded-3xl p-7 transition-all hover:-translate-y-1">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="px-3 py-1 bg-orange-500/20 text-orange-400 rounded-2xl text-xs font-bold tracking-widest">PART 01</div>
+                        <i class="fa-solid fa-arrow-right text-zinc-600 group-hover:text-indigo-400 transition-colors"></i>
+                    </div>
+                    <div class="font-semibold text-2xl mb-2 tracking-tight">LLM & ChatGPT API</div>
+                    <div class="text-sm text-zinc-400 mb-4">직접 OpenAI API 호출, 프롬프트 구조, 파라미터 실험, 비용 계산까지 기초 다지기</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <span class="tech-badge bg-orange-500/10 text-orange-400">dotenv</span>
+                        <span class="tech-badge bg-orange-500/10 text-orange-400">Chat Completions</span>
+                        <span class="tech-badge bg-orange-500/10 text-orange-400">System Prompt</span>
+                    </div>
+                </a>
+
+                <!-- Part 02 Card -->
+                <a href="part02.html" class="group block glass border border-white/10 hover:border-indigo-500/50 rounded-3xl p-7 transition-all hover:-translate-y-1">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="px-3 py-1 bg-sky-500/20 text-sky-400 rounded-2xl text-xs font-bold tracking-widest">PART 02</div>
+                        <i class="fa-solid fa-arrow-right text-zinc-600 group-hover:text-indigo-400 transition-colors"></i>
+                    </div>
+                    <div class="font-semibold text-2xl mb-2 tracking-tight">LangChain 핵심</div>
+                    <div class="text-sm text-zinc-400 mb-4">LCEL 파이프라인, RunnableLambda, Memory, Output Parser, Agent & ReAct 패턴</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <span class="tech-badge bg-sky-500/10 text-sky-400">LCEL</span>
+                        <span class="tech-badge bg-sky-500/10 text-sky-400">Memory</span>
+                        <span class="tech-badge bg-sky-500/10 text-sky-400">Agent</span>
+                    </div>
+                </a>
+
+                <!-- Part 03 Card -->
+                <a href="part03.html" class="group block glass border border-white/10 hover:border-indigo-500/50 rounded-3xl p-7 transition-all hover:-translate-y-1">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="px-3 py-1 bg-violet-500/20 text-violet-400 rounded-2xl text-xs font-bold tracking-widest">PART 03</div>
+                        <i class="fa-solid fa-arrow-right text-zinc-600 group-hover:text-indigo-400 transition-colors"></i>
+                    </div>
+                    <div class="font-semibold text-2xl mb-2 tracking-tight">RAG & Vector DB</div>
+                    <div class="text-sm text-zinc-400 mb-4">ChromaDB, 코사인 유사도, Retriever, Multi-Query RAG로 지식 검색 증강</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <span class="tech-badge bg-violet-500/10 text-violet-400">ChromaDB</span>
+                        <span class="tech-badge bg-violet-500/10 text-violet-400">RAG Pipeline</span>
+                        <span class="tech-badge bg-violet-500/10 text-violet-400">Retriever</span>
+                    </div>
+                </a>
+
+                <!-- Part 04 Card -->
+                <a href="part04.html" class="group block glass border border-white/10 hover:border-indigo-500/50 rounded-3xl p-7 transition-all hover:-translate-y-1">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-2xl text-xs font-bold tracking-widest">PART 04</div>
+                        <i class="fa-solid fa-arrow-right text-zinc-600 group-hover:text-indigo-400 transition-colors"></i>
+                    </div>
+                    <div class="font-semibold text-2xl mb-2 tracking-tight">Multimodal (Audio)</div>
+                    <div class="text-sm text-zinc-400 mb-4">Whisper 로컬 음성 인식, 배치 전사, 화자 분리 (Diarization)로 오디오 멀티모달 구현</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <span class="tech-badge bg-emerald-500/10 text-emerald-400">Whisper</span>
+                        <span class="tech-badge bg-emerald-500/10 text-emerald-400">Speech-to-Text</span>
+                        <span class="tech-badge bg-emerald-500/10 text-emerald-400">Diarization</span>
+                    </div>
+                </a>
+
+            </div>
+            
+            <div class="text-center mt-8 text-xs text-zinc-500">
+                각 Part 페이지는 해당 GitHub 폴더의 실제 코드와 실습 내용을 기반으로 구성되어 있습니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Scenario-Driven 파트별 Python 코드 실행기 (demo.js가 진짜 소스) -->
+    <div id="demo" class="max-w-screen-2xl mx-auto px-8 py-16 border-t border-white/10 bg-zinc-900/60">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <div class="text-emerald-400 text-sm font-semibold tracking-[3px]">상황 기반 분석</div>
+                    <h2 class="section-header tracking-tight">파트별 python 상황분석 기능</h2>
+                    <p class="text-zinc-400 mt-1">실제 프로젝트 기반 40개 상황 (Part당 10개) · 상황 분석 코드 + 직관적 결과</p>
+                </div>
+                <div id="pyodide-status" class="px-4 py-1.5 rounded-2xl bg-zinc-800 text-sm text-zinc-400 border border-white/10">
+                    Pyodide 준비 대기
+                </div>
+            </div>
+
+            <!-- Part Tabs -->
+            <div class="flex flex-wrap gap-2 mb-6" id="part-tabs">
+                <button type="button" onclick="switchPart('part01')" class="part-tab active px-5 py-2 rounded-2xl text-sm font-medium bg-white text-zinc-900 transition-all" data-part="part01">
+                    Part01 • Basic
+                </button>
+                <button type="button" onclick="switchPart('part02')" class="part-tab px-5 py-2 rounded-2xl text-sm font-medium bg-zinc-800 hover:bg-zinc-700 transition-all" data-part="part02">
+                    Part02 • LCEL
+                </button>
+                <button type="button" onclick="switchPart('part03')" class="part-tab px-5 py-2 rounded-2xl text-sm font-medium bg-zinc-800 hover:bg-zinc-700 transition-all" data-part="part03">
+                    Part03 • RAG
+                </button>
+                <button type="button" onclick="switchPart('part04')" class="part-tab px-5 py-2 rounded-2xl text-sm font-medium bg-zinc-800 hover:bg-zinc-700 transition-all" data-part="part04">
+                    Part04 • Diarization + Vision
+                </button>
+            </div>
+
+            <!-- Scenarios Grid -->
+            <div class="glass rounded-3xl p-6 border border-white/10 mb-6">
+                <div class="mb-4">
+                    <div class="text-sm text-zinc-400 mb-3">
+                        <i class="fa-solid fa-info-circle text-emerald-400 mr-2"></i>
+                        아래에서 파이썬 파일을 선택하면 코드가 로드됩니다.<br>
+                        <span class="text-xs text-amber-400">※ 일부 파일은 "데모용 단순 버전"으로 대체되었습니다 (무거운 의존성 제거). 실제 코드는 프로젝트 폴더 참조.</span>
+                    </div>
+                </div>
+                <div id="scenarios-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                    <!-- JS가 demo.js의 PYTHON_FILES 데이터로 채움 -->
+                </div>
+            </div>
+
+            <!-- Code Input Box (직접 카테고리 밑에 보이도록) -->
+            <div class="glass rounded-3xl p-6 border border-white/10 mb-6">
+                <div class="mb-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-sm font-semibold text-zinc-300">Python 코드 (선택한 상황에 따라 자동 로드)</span>
+                        </div>
+                        <div id="current-scenario-info" class="text-xs text-emerald-400"></div>
+                    </div>
+                </div>
+
+                <textarea id="python-code-editor" spellcheck="false"
+                    class="w-full h-[320px] bg-black border border-white/20 focus:border-emerald-500 rounded-2xl p-4 font-mono text-xs text-emerald-200 leading-relaxed resize-y"
+                    placeholder="시나리오를 선택하면 여기에 코드가 로드됩니다..."></textarea>
+
+                <div class="flex gap-3 mt-3">
+                    <button onclick="runCurrentScenario()" 
+                            class="flex-1 h-11 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-semibold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-play"></i> Pyodide로 실행
+                    </button>
+                    <button onclick="resetCurrentScenarioCode()" 
+                            class="px-6 h-11 bg-zinc-800 hover:bg-zinc-700 rounded-2xl flex items-center gap-2">
+                        <i class="fa-solid fa-undo"></i> 기본 코드로 되돌리기
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results Area -->
+            <div class="glass rounded-3xl p-6 border border-white/10">
+                <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                    <!-- Intuitive Result + Code Data Analysis -->
+                    <div class="xl:col-span-7 space-y-4">
+                        <div>
+                            <div class="text-sm text-zinc-400 mb-2">직관적인 분석 결과</div>
+                            <div id="intuitive-result" class="min-h-[110px] bg-zinc-950 border border-white/10 rounded-2xl p-4 text-sm">
+                                <div class="text-zinc-500 italic text-xs">시나리오를 선택하고 코드를 실행하면 여기에 결과가 나타납니다.</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="text-sm text-zinc-400">코드 데이터 분석</div>
+                                <div class="text-[10px] px-2 py-0.5 bg-emerald-900/40 text-emerald-400 rounded-full">Data Analysis</div>
+                            </div>
+                            <div id="code-data-analysis" class="min-h-[160px] bg-zinc-950 border border-emerald-500/30 rounded-2xl p-4 text-sm overflow-auto">
+                                <div class="text-zinc-500 italic text-xs">Python 코드 실행 후 데이터 분석 결과가 여기에 표시됩니다.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Raw Console -->
+                    <div class="xl:col-span-5">
+                        <div class="text-xs text-zinc-400 mb-2">Raw Console Output</div>
+                        <div id="python-console-output" 
+                             class="h-[300px] bg-black border border-white/10 rounded-2xl p-3 font-mono text-xs overflow-auto text-emerald-300">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 text-center text-[10px] text-zinc-500">
+                demo.js가 모든 시나리오 데이터와 결과 렌더링을 담당 (유지보수 용이)
+            </div>
+        </div>
+    </div>
+
+    <!-- Curriculum Connection -->
+    <div id="curriculum" class="max-w-screen-2xl mx-auto px-8 py-20">
+        <div class="max-w-5xl mx-auto text-center">
+            <div class="text-indigo-400 text-sm font-semibold tracking-[3px] mb-3">BiNCS 교육 과정과의 연계</div>
+            <h2 class="section-header tracking-tight">배운 내용을 하나로 연결합니다</h2>
+            
+            <div class="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
+                <div class="px-6 py-5 rounded-3xl border border-white/10 bg-white/5">
+                    <div class="font-semibold">(BiNCS) OpenCV + 영상인식</div>
+                    <div class="text-xs text-zinc-400 mt-1">YOLO 탐지 결과 → frame_data</div>
+                </div>
+                <div class="px-6 py-5 rounded-3xl border border-white/10 bg-white/5">
+                    <div class="font-semibold">(BiNCS) LLM + 프로프트 엔지니어링</div>
+                    <div class="text-xs text-zinc-400 mt-1">시스템 프롬프트 + JSON 강제</div>
+                </div>
+                <div class="px-6 py-5 rounded-3xl border border-white/10 bg-white/5">
+                    <div class="font-semibold">(BiNCS) 랭체인</div>
+                    <div class="text-xs text-zinc-400 mt-1">LCEL, RunnableLambda, Memory</div>
+                </div>
+                <div class="px-6 py-5 rounded-3xl border border-white/10 bg-white/5">
+                    <div class="font-semibold">(BiNCS) RAG</div>
+                    <div class="text-xs text-zinc-400 mt-1">ChromaDB + 과거 로그 검색</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed MD Link -->
+    <div id="detailed-md" class="max-w-screen-2xl mx-auto px-8 pb-20">
+        <div class="max-w-3xl mx-auto text-center py-12 border-t border-white/10">
+            <p class="text-zinc-400">더 깊이 있는 변수 설명, 코드 흐름, 출력 결과 분석은 아래 파일에서 확인하세요.</p>
+            <a href="../2026_llm_langchain_rag_exam_코드설명.md" 
+               class="inline-flex items-center gap-x-3 mt-6 px-8 py-3.5 rounded-3xl border border-white/30 hover:bg-white/5 transition-all text-sm font-medium">
+                <i class="fa-solid fa-file-alt"></i>
+                <span>상세 분석 MD 파일 열기 (2026_llm_langchain_rag_exam_코드설명.md)</span>
+            </a>
+        </div>
+    </div>
+
+    <footer class="border-t border-white/10 py-8 text-center text-xs text-zinc-500">
+        ShadowWatch AI • BiNCS 2026 LLM·LangChain 실습 프로젝트<br>
+        이 사이트는 교육용으로 제작되었습니다.
+    </footer>
+
+    <script>
+        // Tailwind script
+        function initializeTailwind() {
+            document.documentElement.style.setProperty('--accent', '#6366f1');
+        }
+        
+        // Highlight pipeline step
+        let currentStep = -1;
+        
+        function highlightStep(stepIndex) {
+            const steps = document.querySelectorAll('#pipeline-container .pipeline-step');
+            
+            // Reset all
+            steps.forEach((step, idx) => {
+                step.classList.remove('active', 'border-indigo-500');
+                step.style.borderColor = '';
+            });
+            
+            if (stepIndex === currentStep) {
+                currentStep = -1;
+                return;
+            }
+            
+            const target = steps[stepIndex];
+            if (target) {
+                target.classList.add('active', 'border-indigo-500');
+                target.style.borderColor = '#6366f1';
+                currentStep = stepIndex;
+                
+                // Auto scroll on mobile
+                if (window.innerWidth < 768) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+        
+        // Pipeline animation
+        function startPipelineAnimation() {
+            const arrows = document.querySelectorAll('.flow-arrow');
+            const steps = document.querySelectorAll('#pipeline-container .pipeline-step');
+            
+            // Reset
+            arrows.forEach(a => a.classList.remove('active', 'text-indigo-400'));
+            steps.forEach(s => s.classList.remove('active', 'border-indigo-500'));
+            
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i > 0) {
+                    arrows[i-1].classList.remove('active', 'text-indigo-400');
+                    steps[i-1].classList.remove('active', 'border-indigo-500');
+                }
+                
+                if (i < steps.length) {
+                    steps[i].classList.add('active', 'border-indigo-500');
+                    if (arrows[i]) arrows[i].classList.add('active', 'text-indigo-400');
+                    i++;
+                } else {
+                    clearInterval(interval);
+                    // Reset after finish
+                    setTimeout(() => {
+                        steps.forEach(s => s.classList.remove('active', 'border-indigo-500'));
+                        arrows.forEach(a => a.classList.remove('active', 'text-indigo-400'));
+                    }, 1200);
+                }
+            }, 650);
+        }
+        
+        // Demo Analysis Simulation
+        function runDemoAnalysis() {
+            const outputDiv = document.getElementById('demo-output');
+            const location = document.getElementById('location').value;
+            const frameId = document.getElementById('frame_id').value;
+            const timestamp = document.getElementById('timestamp').value;
+            const detectionType = document.getElementById('detection_type').value;
+            
+            outputDiv.innerHTML = `
+                <div class="flex items-center gap-x-2 text-emerald-400 mb-4">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <span class="font-medium">LLM 분석 중...</span>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                let riskLevel = "주의";
+                let reason = `${location}에서 ${timestamp}에 탐지된 객체를 분석한 결과, 사람의 움직임이 감지되었습니다.`;
+                let action = "추가 확인이 필요합니다. 근처 카메라 영상을 확인하세요.";
+                
+                if (detectionType === "suspicious") {
+                    riskLevel = "위험";
+                    reason = "수상한 움직임이 다수 탐지되었습니다. 비정상적인 행동 패턴이 감지됨.";
+                    action = "즉시 보안 요원 파견 및 경찰 신고를 권장합니다.";
+                } else if (detectionType === "vehicle") {
+                    riskLevel = "주의";
+                    reason = "차량과 함께 사람이 탐지되었습니다. 야간 출입 차량 확인이 필요합니다.";
+                }
+                
+                const result = {
+                    frame_id: parseInt(frameId),
+                    timestamp: timestamp,
+                    location: location,
+                    risk_level: riskLevel,
+                    reason: reason,
+                    action: action,
+                    confidence: "0.89",
+                    analyzed_at: new Date().toISOString()
+                };
+                
+                outputDiv.innerHTML = `
+                    <div class="text-emerald-400 text-xs mb-2 flex items-center gap-x-2">
+                        <i class="fa-solid fa-check-circle"></i> 
+                        <span>분석 완료 (시뮬레이션)</span>
+                    </div>
+                    <pre class="text-xs leading-relaxed text-zinc-300 whitespace-pre-wrap">${JSON.stringify(result, null, 2)}</pre>
+                    
+                    <div class="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-[10px]">
+                        <div class="text-zinc-500">Memory에 저장됨</div>
+                        <div class="px-3 py-0.5 bg-emerald-900/30 text-emerald-400 rounded-full text-[10px]">risk_level: ${riskLevel}</div>
+                    </div>
+                `;
+            }, 1350);
+        }
+        
+        // Full simulation from pipeline (triggers demo + animation)
+        function startSimulation() {
+            // Scroll to demo
+            document.getElementById('demo').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            setTimeout(() => {
+                // Pre-fill demo with interesting values
+                document.getElementById('location').value = "주차장 B구역";
+                document.getElementById('frame_id').value = "12";
+                document.getElementById('timestamp').value = "03:11";
+                document.getElementById('detection_type').value = "suspicious";
+                
+                // Run analysis
+                runDemoAnalysis();
+                
+                // Also animate the pipeline
+                setTimeout(() => {
+                    startPipelineAnimation();
+                }, 800);
+            }, 900);
+        }
+        
+        // Keyboard support
+        function setupKeyboard() {
+            document.addEventListener('keydown', function(e) {
+                if (e.key === "?" && document.activeElement.tagName === "BODY") {
+                    e.preventDefault();
+                    const demo = document.getElementById('demo');
+                    demo.scrollIntoView({ behavior: 'smooth' });
+                }
+                
+                if (e.key.toLowerCase() === 'r' && e.metaKey) {
+                    e.preventDefault();
+                    startPipelineAnimation();
+                }
+            });
+            
+            // Easter egg: click logo to reset
+            const logo = document.querySelector('.fa-shield-halved');
+            if (logo) {
+                logo.addEventListener('click', () => {
+                    document.querySelectorAll('.pipeline-step').forEach(s => s.classList.remove('active', 'border-indigo-500'));
+                    document.querySelectorAll('.flow-arrow').forEach(a => a.classList.remove('active', 'text-indigo-400'));
+                });
+            }
+        }
+        
+        // Initialize everything
+        function init() {
+            initializeTailwind();
+            setupKeyboard();
+            
+            // Random subtle animation on load for one step
+            setTimeout(() => {
+                const firstStep = document.querySelector('#pipeline-container .pipeline-step');
+                if (firstStep) {
+                    firstStep.style.transitionDuration = '0ms';
+                    firstStep.classList.add('border-indigo-500/30');
+                    setTimeout(() => {
+                        firstStep.style.transitionDuration = '0.4s';
+                        firstStep.classList.remove('border-indigo-500/30');
+                    }, 300);
+                }
+            }, 2200);
+            
+            // Make pipeline steps keyboard accessible
+            const steps = document.querySelectorAll('#pipeline-container .pipeline-step');
+            steps.forEach((step, index) => {
+                step.setAttribute('tabindex', '0');
+                step.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        highlightStep(index);
+                    }
+                });
+            });
+
+            // Ensure Part tabs reliably call switchPart (add event listeners)
+            const partTabs = document.querySelectorAll('.part-tab');
+            partTabs.forEach(tab => {
+                // Remove any existing inline onclick to avoid double calls, rely on listener
+                tab.onclick = null;
+                tab.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const part = tab.dataset.part;
+                    if (part && typeof switchPart === 'function') {
+                        switchPart(part);
+                    } else {
+                        console.warn('switchPart not ready yet for', part);
+                    }
+                });
+            });
+
+            // Also add a delegated click handler so any dynamically-added .part-tab elements respond
+            document.addEventListener('click', (e) => {
+                const tab = e.target.closest && e.target.closest('.part-tab');
+                if (!tab) return;
+                e.preventDefault();
+                const part = tab.dataset.part || tab.getAttribute('data-part');
+                if (part && typeof switchPart === 'function') switchPart(part);
+            });
+            
+            console.log('%c[ShadowWatch] LLM Pipeline Lab initialized', 'color:#666');
+        }
+        
+        // ==================== Thin Glue for 파트별 python 상황분석 기능 ====================
+        let currentPart = 'part01';
+        let currentScenario = null;
+
+        function switchPart(part) {
+            currentPart = part;
+            document.querySelectorAll('.part-tab').forEach(b => {
+                const active = b.dataset.part === part;
+                b.classList.toggle('active', active);
+                b.classList.toggle('bg-white', active);
+                b.classList.toggle('text-zinc-900', active);
+                b.classList.toggle('bg-zinc-800', !active);
+            });
+
+            // Render the python files/scenarios grid for this part (from demo.js)
+            if (typeof renderPythonFilesGrid === 'function') {
+                renderPythonFilesGrid(part);
+            }
+
+            // Load the first/default code for the part into the editor box right below
+            loadDefaultCodeForPart(part);
+        }
+
+        function loadDefaultCodeForPart(part) {
+            const editor = document.getElementById('python-code-editor');
+            const info = document.getElementById('current-scenario-info');
+            if (!editor) return;
+
+            // Try to use the real files from demo.js if available
+            const filesForPart = (typeof PYTHON_FILES !== 'undefined') ? PYTHON_FILES[part] || [] : [];
+            if (filesForPart.length > 0 && typeof loadPythonFile === 'function') {
+                const firstFile = filesForPart[0].name;
+                loadPythonFile(part, firstFile);
+                return;
+            }
+
+            // Fallback simple code
+            let code = '';
+            let title = '';
+            if (part === 'part01') {
+                title = 'Part01 - 기본 Chat Completion';
+                code = `# Part01 예제 코드\nmessages = [\n    {"role": "system", "content": "당신은 AI CCTV 보안 분석 시스템입니다."},\n    {"role": "user", "content": "새벽 2시 창고에서 person 2명 탐지"}\n]\nprint("=== Part01 결과 ===")\nprint({"risk_level": "주의", "reason": "심야 다수 인원", "action": "순찰 강화"})`;
+            } else if (part === 'part02') {
+                title = 'Part02 - LCEL 체인';
+                code = `# Part02 LCEL 예제\ndef analyze(data):\n    return {"frame": data["frame_id"], "risk": "위험" if "person" in str(data) else "주의"}\n\nresult = analyze({"frame_id": 42, "detections": "person:2"})\nprint("=== Part02 LCEL 결과 ===")\nprint(result)`;
+            } else if (part === 'part03') {
+                title = 'Part03 - RAG 검색';
+                code = `# Part03 RAG 예제\ndocs = ["과거 창고 침입 사례", "주차장 정상"]\nprint("=== Part03 RAG 결과 ===")\nprint("검색된 문서:", [d for d in docs if "침입" in d])`;
+            } else if (part === 'part04') {
+                title = 'Part04 - Diarization / Vision';
+                code = `# Part04 예제\ndef merge_segments(segments):\n    # 간단 병합 로직\n    return segments\n\nprint("=== Part04 결과 ===")\nprint("화자 분석 완료")`;
+            }
+
+            editor.value = code;
+            if (info) info.textContent = title;
+
+            currentScenario = { title: title, resultType: 'default' };
+
+            const intuitive = document.getElementById('intuitive-result');
+            if (intuitive) intuitive.innerHTML = '<div class="text-zinc-500 italic text-xs">Pyodide로 실행해보세요.</div>';
+
+            const analysis = document.getElementById('code-data-analysis');
+            if (analysis) analysis.innerHTML = '<div class="text-zinc-500 italic text-xs">실행 후 데이터 분석 결과가 표시됩니다.</div>';
+
+            const consoleOut = document.getElementById('python-console-output');
+            if (consoleOut) consoleOut.innerHTML = '';
+        }
+
+        function renderScenariosGrid(part) {
+            // This may be called as alias, delegate to renderPythonFilesGrid if present
+            if (typeof renderPythonFilesGrid === 'function') {
+                renderPythonFilesGrid(part);
+                return;
+            }
+            // fallback empty or simple
+            const container = document.getElementById('scenarios-grid');
+            if (container) container.innerHTML = '<div class="text-xs text-zinc-500">No scenarios loaded (demo.js?)</div>';
+        }
+
+        function openScenario(sc) {
+            currentScenario = sc;
+            const editor = document.getElementById('python-code-editor');
+            if (editor) editor.value = sc.code || '';
+            const info = document.getElementById('current-scenario-info');
+            if (info) info.textContent = sc.title || '';
+            const intuitive = document.getElementById('intuitive-result');
+            if (intuitive) intuitive.innerHTML = '<div class="text-zinc-500 italic text-xs">Pyodide로 실행하면 결과가 나타납니다.</div>';
+            const analysis = document.getElementById('code-data-analysis');
+            if (analysis) analysis.innerHTML = '<div class="text-zinc-500 italic text-xs">코드를 실행하면 데이터 분석 결과가 여기에 표시됩니다.</div>';
+            const consoleOut = document.getElementById('python-console-output');
+            if (consoleOut) consoleOut.innerHTML = '';
+        }
+
+        function runCurrentScenario() {
+            const editor = document.getElementById('python-code-editor');
+            if (!editor || !editor.value.trim()) {
+                alert('실행할 코드가 없습니다. 시나리오를 선택하거나 코드를 입력해주세요.');
+                return;
+            }
+            if (typeof runPythonViaPyodide === 'function') {
+                runPythonViaPyodide();
+                setTimeout(() => {
+                    const raw = document.getElementById('python-console-output').innerText || '';
+                    const scenarioForAnalysis = currentScenario || { resultType: 'default' };
+                    const intuitiveBox = document.getElementById('intuitive-result');
+                    if (typeof renderIntuitiveResult === 'function') {
+                        intuitiveBox.innerHTML = renderIntuitiveResult(scenarioForAnalysis, raw);
+                    }
+                    const analysisBox = document.getElementById('code-data-analysis');
+                    if (analysisBox && typeof renderCodeDataAnalysis === 'function') {
+                        analysisBox.innerHTML = renderCodeDataAnalysis(scenarioForAnalysis, raw);
+                    }
+                }, 700);
+            } else {
+                alert('Pyodide 실행 함수를 찾을 수 없습니다. (demo.js 로드 확인)');
+            }
+        }
+
+        function resetCurrentScenarioCode() {
+            if (currentScenario) {
+                const editor = document.getElementById('python-code-editor');
+                if (editor) editor.value = currentScenario.code || '';
+            }
+        }
+
+        function initDemoSystem() {
+            setTimeout(() => {
+                if (typeof renderPythonFilesGrid === 'function') {
+                    renderPythonFilesGrid('part01');
+                }
+                if (typeof loadPythonFile === 'function') {
+                    loadPythonFile('part01', 'ch02_dotenv_apicall.py');
+                }
+                if (typeof loadPyodideIfNeeded === 'function') loadPyodideIfNeeded();
+            }, 80);
+        }
+
+        const _prevOnload = window.onload;
+        window.onload = function(ev) {
+            if (_prevOnload) try { _prevOnload(ev); } catch(e){}
+            if (typeof init === 'function') try { init(); } catch(e){}
+            initDemoSystem();
+        };
+        // ==================== END Glue ====================
+    </script>
+</body>
+</html>
